@@ -7,6 +7,17 @@ use AbdelrahmanDwedar\Selective\SelectiveServiceProvider;
 
 abstract class TestCase extends Orchestra
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        try {
+            \Illuminate\Support\Facades\Redis::connection()->ping();
+        } catch (\Exception $e) {
+            $this->markTestSkipped('Redis is not running. Please start Redis to run feature tests.');
+        }
+    }
+
     protected function getPackageProviders($app)
     {
         return [
