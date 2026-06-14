@@ -75,8 +75,8 @@ class BloomClearCommand extends Command
     {
         $prefix = config('selective.key_prefix', 'selective:');
         
-        $redis = Redis::connection(config('selective.redis_connection', 'default'))->client();
-        $keys = $redis->keys($prefix . '*');
+        $redis = Redis::connection(config('selective.redis_connection', 'default'));
+        $keys = $redis->executeRaw(['KEYS', $prefix . '*']);
 
         if (empty($keys)) {
             $this->info("No bloom filters found with prefix '{$prefix}'.");
@@ -90,7 +90,7 @@ class BloomClearCommand extends Command
             return 0;
         }
 
-        $deleted = $redis->del($keys);
+        $deleted = $redis->executeRaw(array_merge(['DEL'], $keys));
         
         $this->info("Successfully deleted {$deleted} bloom filter(s).");
         return 0;

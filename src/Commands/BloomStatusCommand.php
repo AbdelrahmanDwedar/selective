@@ -70,11 +70,11 @@ class BloomStatusCommand extends Command
         $prefix = config('selective.key_prefix', 'selective:');
         
         // This gets the raw Redis connection which depends on the driver (predis/phpredis)
-        $redis = Redis::connection(config('selective.redis_connection', 'default'))->client();
+        $redis = Redis::connection(config('selective.redis_connection', 'default'));
         
         // Note: KEYS is generally not recommended in production for large datasets, 
         // but it's acceptable for a status command.
-        $keys = $redis->keys($prefix . '*');
+        $keys = $redis->executeRaw(['KEYS', $prefix . '*']);
 
         if (empty($keys)) {
             $this->info("No bloom filters found with prefix '{$prefix}'.");
