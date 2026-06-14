@@ -1,0 +1,38 @@
+{
+    "name": "abdelrahmandwedar/selective",
+    "description": "A Laravel package",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Abdelrahman Dwedar",
+            "email": "abdelrahman.dwedar@example.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^10.0|^11.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0",
+        "phpunit/phpunit": "^10.0|^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "AbdelrahmanDwedar\\Selective\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AbdelrahmanDwedar\\Selective\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "AbdelrahmanDwedar\\Selective\\SelectiveServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
