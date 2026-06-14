@@ -1,11 +1,11 @@
 {
     "name": "abdelrahmandwedar/selective",
-    "description": "A Laravel package",
+    "description": "A Laravel package to use Redis bloom filters for super-fast validation",
     "license": "MIT",
     "authors": [
         {
-            "name": "Abdelrahman Dwedar",
-            "email": "abdelrahman.dwedar@example.com"
+            "name": "AbdelrahmanDwedar",
+            "email": "abdelrahman.dwedar.7350@gmail.com"
         }
     ],
     "require": {
@@ -17,7 +17,8 @@
         "phpunit/phpunit": "^10.0|^11.0",
         "laravel/pint": "^1.29",
         "pestphp/pest": "^3.8",
-        "pestphp/pest-plugin-laravel": "^3.2"
+        "pestphp/pest-plugin-laravel": "^3.2",
+        "predis/predis": "^3.5"
     },
     "autoload": {
         "psr-4": {
