@@ -10,44 +10,23 @@ use Exception;
 class BloomFilterService
 {
     /**
-     * @var \Illuminate\Redis\Connections\Connection
+     * @var ConfigRepository
      */
-    protected $redis;
-
-    /**
-     * @var string
-     */
-    protected $prefix;
-
-    /**
-     * @var bool
-     */
-    protected $fallbackOnError;
-
-    /**
-     * @var bool
-     */
-    protected $autoReserve;
-
-    /**
-     * @var float
-     */
-    protected $defaultErrorRate;
-
-    /**
-     * @var int
-     */
-    protected $defaultCapacity;
+    protected $config;
 
     public function __construct(ConfigRepository $config)
     {
-        $connectionName = $config->get('selective.redis_connection', 'default');
-        $this->redis = Redis::connection($connectionName);
-        $this->prefix = $config->get('selective.key_prefix', 'selective:');
-        $this->fallbackOnError = $config->get('selective.fallback_on_error', true);
-        $this->autoReserve = $config->get('selective.auto_reserve', true);
-        $this->defaultErrorRate = $config->get('selective.default_error_rate', 0.01);
-        $this->defaultCapacity = $config->get('selective.default_capacity', 1000);
+        $this->config = $config;
+    }
+
+    /**
+     * Get the Redis connection.
+     *
+     * @return \Illuminate\Redis\Connections\Connection
+     */
+    protected function getConnection()
+    {
+        return Redis::connection($this->config->get('selective.redis_connection', 'default'));
     }
 
     /**
@@ -58,7 +37,8 @@ class BloomFilterService
      */
     public function getKey(string $key): string
     {
-        return $this->prefix . $key;
+        $prefix = $this->config->get('selective.key_prefix', 'selective:');
+        return $prefix . $key;
     }
 
     /**
@@ -72,11 +52,11 @@ class BloomFilterService
     public function reserve(string $key, ?float $errorRate = null, ?int $capacity = null): void
     {
         try {
-            $this->redis->executeRaw([
+            $this->getConnection()->executeRaw([
                 'BF.RESERVE',
                 $this->getKey($key),
-                $errorRate ?? $this->defaultErrorRate,
-                $capacity ?? $this->defaultCapacity
+                $errorRate ?? $this->config->get('selective.default_error_rate', 0.01),
+                $capacity ?? $this->config->get('selective.default_capacity', 1000)
             ]);
         } catch (Exception $e) {
             $this->handleException('Failed to reserve bloom filter', $e);
@@ -93,18 +73,18 @@ class BloomFilterService
     public function add(string $key, string $item): bool
     {
         try {
-            if ($this->autoReserve) {
+            if ($this->config->get('selective.auto_reserve', true)) {
                 // BF.INSERT can automatically create the filter if it doesn't exist
-                $result = $this->redis->executeRaw([
+                $result = $this->getConnection()->executeRaw([
                     'BF.INSERT',
                     $this->getKey($key),
-                    'CAPACITY', $this->defaultCapacity,
-                    'ERROR', $this->defaultErrorRate,
+                    'CAPACITY', $this->config->get('selective.default_capacity', 1000),
+                    'ERROR', $this->config->get('selective.default_error_rate', 0.01),
                     'ITEMS', $item
                 ]);
                 return (bool) $result[0];
             } else {
-                return (bool) $this->redis->executeRaw([
+                return (bool) $this->getConnection()->executeRaw([
                     'BF.ADD',
                     $this->getKey($key),
                     $item
@@ -126,7 +106,7 @@ class BloomFilterService
     public function exists(string $key, string $item): bool
     {
         try {
-            return (bool) $this->redis->executeRaw([
+            return (bool) $this->getConnection()->executeRaw([
                 'BF.EXISTS',
                 $this->getKey($key),
                 $item
@@ -152,19 +132,19 @@ class BloomFilterService
         }
 
         try {
-            if ($this->autoReserve) {
+            if ($this->config->get('selective.auto_reserve', true)) {
                 $args = [
                     'BF.INSERT',
                     $this->getKey($key),
-                    'CAPACITY', $this->defaultCapacity,
-                    'ERROR', $this->defaultErrorRate,
+                    'CAPACITY', $this->config->get('selective.default_capacity', 1000),
+                    'ERROR', $this->config->get('selective.default_error_rate', 0.01),
                     'ITEMS'
                 ];
-                $result = $this->redis->executeRaw(array_merge($args, $items));
+                $result = $this->getConnection()->executeRaw(array_merge($args, $items));
                 return array_map(fn($r) => (bool) $r, $result);
             } else {
                 $args = ['BF.MADD', $this->getKey($key)];
-                $result = $this->redis->executeRaw(array_merge($args, $items));
+                $result = $this->getConnection()->executeRaw(array_merge($args, $items));
                 return array_map(fn($r) => (bool) $r, $result);
             }
         } catch (Exception $e) {
@@ -188,7 +168,7 @@ class BloomFilterService
 
         try {
             $args = ['BF.MEXISTS', $this->getKey($key)];
-            $result = $this->redis->executeRaw(array_merge($args, $items));
+            $result = $this->getConnection()->executeRaw(array_merge($args, $items));
             return array_map(fn($r) => (bool) $r, $result);
         } catch (Exception $e) {
             $this->handleException('Failed to check multiple existence in bloom filter', $e);
@@ -205,8 +185,12 @@ class BloomFilterService
     public function info(string $key): array
     {
         try {
-            $result = $this->redis->executeRaw(['BF.INFO', $this->getKey($key)]);
+            $result = $this->getConnection()->executeRaw(['BF.INFO', $this->getKey($key)]);
             
+            if (!is_array($result)) {
+                return [];
+            }
+
             // Result comes back as a flat list: [key1, val1, key2, val2, ...]
             $info = [];
             for ($i = 0; $i < count($result); $i += 2) {
@@ -230,7 +214,7 @@ class BloomFilterService
     public function delete(string $key): bool
     {
         try {
-            return (bool) $this->redis->del($this->getKey($key));
+            return (bool) $this->getConnection()->executeRaw(['DEL', $this->getKey($key)]);
         } catch (Exception $e) {
             $this->handleException('Failed to delete bloom filter', $e);
             return false;
@@ -247,7 +231,7 @@ class BloomFilterService
      */
     protected function handleException(string $message, Exception $e): void
     {
-        if ($this->fallbackOnError) {
+        if ($this->config->get('selective.fallback_on_error', true)) {
             Log::warning("[Selective] {$message}: " . $e->getMessage());
         } else {
             throw $e;

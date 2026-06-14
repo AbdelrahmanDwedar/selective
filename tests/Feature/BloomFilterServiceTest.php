@@ -64,6 +64,9 @@ it('can check multiple items existence', function () {
 it('can delete a bloom filter', function () {
     $this->service->add($this->testKey, 'test@example.com');
     
+    // Check if key exists first using info()
+    expect($this->service->info($this->testKey))->not->toBeEmpty();
+    
     $deleted = $this->service->delete($this->testKey);
     expect($deleted)->toBeTrue();
     
@@ -72,12 +75,15 @@ it('can delete a bloom filter', function () {
 });
 
 it('handles redis exceptions gracefully when fallback is enabled', function () {
-    // Mock Redis to throw an exception
-    Redis::shouldReceive('connection')->andThrow(new Exception('Redis is down'));
+    // Mock the connection and the command
+    $mockConnection = Mockery::mock(\Illuminate\Redis\Connections\Connection::class);
+    $mockConnection->shouldReceive('executeRaw')->andThrow(new Exception('Redis is down'));
+    
+    Redis::shouldReceive('connection')->andReturn($mockConnection);
     Log::shouldReceive('warning')->once();
     
-    // We need to re-instantiate because the constructor connects to Redis
-    $service = new BloomFilterService(app('config'));
+    // We can use the service from app() as it will now call Redis dynamically
+    $service = app(BloomFilterService::class);
     
     // Shouldn't throw, should return false
     expect($service->exists($this->testKey, 'test@example.com'))->toBeFalse();
