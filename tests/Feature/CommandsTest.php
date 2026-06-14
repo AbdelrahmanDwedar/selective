@@ -9,6 +9,7 @@ use AbdelrahmanDwedar\Selective\BloomFilterService;
 beforeEach(function () {
     Redis::flushall();
     
+    Schema::dropIfExists('test_users');
     Schema::create('test_users', function (Blueprint $table) {
         $table->id();
         $table->string('email');

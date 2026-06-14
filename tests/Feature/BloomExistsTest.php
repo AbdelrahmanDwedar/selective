@@ -10,7 +10,7 @@ beforeEach(function () {
     
     // Create a users table for testing
     DB::statement('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, email TEXT)');
-    DB::table('users')->truncate();
+    DB::table('users')->delete();
     
     $this->service = app(BloomFilterService::class);
 });
