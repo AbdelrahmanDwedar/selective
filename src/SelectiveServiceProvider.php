@@ -14,6 +14,10 @@ class SelectiveServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(
             __DIR__ . '/../config/selective.php', 'selective'
         );
+
+        $this->app->singleton(BloomFilterService::class, function ($app) {
+            return new BloomFilterService($app->make('config'));
+        });
     }
 
     /**
@@ -25,6 +29,12 @@ class SelectiveServiceProvider extends ServiceProvider
             $this->publishes([
                 __DIR__ . '/../config/selective.php' => config_path('selective.php'),
             ], 'selective-config');
+
+            $this->commands([
+                \AbdelrahmanDwedar\Selective\Commands\BloomSeedCommand::class,
+                \AbdelrahmanDwedar\Selective\Commands\BloomStatusCommand::class,
+                \AbdelrahmanDwedar\Selective\Commands\BloomClearCommand::class,
+            ]);
         }
     }
 }
