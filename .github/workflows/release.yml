@@ -1,0 +1,82 @@
+name: Auto Semantic Versioning
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get latest tag
+        id: get-latest-tag
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "latest_tag=$latest_tag" >> $GITHUB_OUTPUT
+
+      - name: Determine version bump
+        id: determine-bump
+        run: |
+          latest_tag="${{ steps.get-latest-tag.outputs.latest_tag }}"
+          
+          # Get commits since latest tag
+          commits=$(git log $latest_tag..HEAD --pretty=format:"%s")
+          
+          bump="patch" # Default to patch
+          
+          while IFS= read -r commit; do
+            if [[ "$commit" == *"!"* ]]; then
+              bump="major"
+              break
+            elif [[ "$commit" == feat* ]]; then
+              if [[ "$bump" != "major" ]]; then
+                bump="minor"
+              fi
+            fi
+          done <<< "$commits"
+          
+          echo "bump=$bump" >> $GITHUB_OUTPUT
+          
+      - name: Calculate new version
+        id: calc-version
+        run: |
+          latest_tag="${{ steps.get-latest-tag.outputs.latest_tag }}"
+          bump="${{ steps.determine-bump.outputs.bump }}"
+          
+          # Remove 'v' prefix
+          version=${latest_tag#v}
+          IFS='.' read -r major minor patch <<< "$version"
+          
+          case $bump in
+            major)
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            patch)
+              patch=$((patch + 1))
+              ;;
+          esac
+          
+          new_version="v$major.$minor.$patch"
+          echo "new_version=$new_version" >> $GITHUB_OUTPUT
+          echo "Current: $latest_tag, New: $new_version, Bump: $bump"
+
+      - name: Create tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ steps.calc-version.outputs.new_version }}"
+          git push origin "${{ steps.calc-version.outputs.new_version }}"
