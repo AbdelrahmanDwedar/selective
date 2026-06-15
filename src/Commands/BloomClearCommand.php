@@ -2,9 +2,9 @@
 
 namespace AbdelrahmanDwedar\Selective\Commands;
 
+use AbdelrahmanDwedar\Selective\BloomFilterService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Redis;
-use AbdelrahmanDwedar\Selective\BloomFilterService;
 
 class BloomClearCommand extends Command
 {
@@ -54,16 +54,19 @@ class BloomClearCommand extends Command
      */
     protected function clearSingleFilter(BloomFilterService $service, string $key)
     {
-        if (!$this->confirm("Are you sure you want to delete the bloom filter for '{$key}'?")) {
+        if (! $this->confirm("Are you sure you want to delete the bloom filter for '{$key}'?")) {
             $this->info('Operation cancelled.');
+
             return 0;
         }
 
         if ($service->delete($key)) {
             $this->info("Successfully deleted bloom filter for '{$key}'.");
+
             return 0;
         } else {
             $this->error("Failed to delete bloom filter for '{$key}'. It may not exist.");
+
             return 1;
         }
     }
@@ -74,25 +77,28 @@ class BloomClearCommand extends Command
     protected function clearAllFilters()
     {
         $prefix = config('selective.key_prefix', 'selective:');
-        
+
         $redis = Redis::connection(config('selective.redis_connection', 'default'));
-        $keys = $redis->executeRaw(['KEYS', $prefix . '*']);
+        $keys = $redis->executeRaw(['KEYS', $prefix.'*']);
 
         if (empty($keys)) {
             $this->info("No bloom filters found with prefix '{$prefix}'.");
+
             return 0;
         }
 
-        $this->warn("Found " . count($keys) . " bloom filter(s) matching prefix '{$prefix}'.");
-        
-        if (!$this->confirm('Are you sure you want to delete ALL of them? This cannot be undone.')) {
+        $this->warn('Found '.count($keys)." bloom filter(s) matching prefix '{$prefix}'.");
+
+        if (! $this->confirm('Are you sure you want to delete ALL of them? This cannot be undone.')) {
             $this->info('Operation cancelled.');
+
             return 0;
         }
 
         $deleted = $redis->executeRaw(array_merge(['DEL'], $keys));
-        
+
         $this->info("Successfully deleted {$deleted} bloom filter(s).");
+
         return 0;
     }
 }

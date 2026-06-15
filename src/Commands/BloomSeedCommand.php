@@ -2,9 +2,9 @@
 
 namespace AbdelrahmanDwedar\Selective\Commands;
 
+use AbdelrahmanDwedar\Selective\BloomFilterService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use AbdelrahmanDwedar\Selective\BloomFilterService;
 
 class BloomSeedCommand extends Command
 {
@@ -39,7 +39,7 @@ class BloomSeedCommand extends Command
         $this->info("Starting bloom filter seed for {$table}.{$column}...");
 
         if ($this->option('fresh')) {
-            $this->warn("Deleting existing filter...");
+            $this->warn('Deleting existing filter...');
             $service->delete($key);
         }
 
@@ -47,11 +47,12 @@ class BloomSeedCommand extends Command
         $capacity = $this->option('capacity') ? (int) $this->option('capacity') : null;
 
         $service->reserve($key, $errorRate, $capacity);
-        
+
         $total = DB::table($table)->count();
-        
+
         if ($total === 0) {
             $this->info("No records found in {$table}.");
+
             return 0;
         }
 
@@ -60,17 +61,17 @@ class BloomSeedCommand extends Command
 
         $chunkSize = 1000;
         $added = 0;
-        
+
         $startTime = microtime(true);
 
         DB::table($table)->select($column)->orderBy('id')->chunk($chunkSize, function ($records) use ($service, $key, $column, $bar, &$added) {
             $items = $records->pluck($column)->filter()->toArray();
-            
-            if (!empty($items)) {
+
+            if (! empty($items)) {
                 $service->addMultiple($key, $items);
                 $added += count($items);
             }
-            
+
             $bar->advance($records->count());
         });
 

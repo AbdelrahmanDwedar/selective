@@ -2,10 +2,11 @@
 
 namespace AbdelrahmanDwedar\Selective\Rules;
 
+use AbdelrahmanDwedar\Selective\BloomFilterService;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Facades\DB;
-use AbdelrahmanDwedar\Selective\BloomFilterService;
+use Illuminate\Translation\PotentiallyTranslatedString;
 
 class BloomUnique implements ValidationRule
 {
@@ -32,8 +33,8 @@ class BloomUnique implements ValidationRule
     /**
      * Create a new rule instance.
      *
-     * @param string $table The database table name
-     * @param string|null $column The database column name (defaults to attribute name)
+     * @param  string  $table  The database table name
+     * @param  string|null  $column  The database column name (defaults to attribute name)
      */
     public function __construct(string $table, ?string $column = null)
     {
@@ -44,8 +45,7 @@ class BloomUnique implements ValidationRule
     /**
      * Ignore the given ID during the unique check.
      *
-     * @param mixed $id
-     * @param string $idColumn
+     * @param  mixed  $id
      * @return $this
      */
     public function ignore($id, string $idColumn = 'id'): self
@@ -59,20 +59,20 @@ class BloomUnique implements ValidationRule
     /**
      * Run the validation rule.
      *
-     * @param  \Closure(string): \Illuminate\Translation\PotentiallyTranslatedString  $fail
+     * @param  Closure(string): PotentiallyTranslatedString  $fail
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         $column = $this->column ?? $attribute;
         $bloomKey = "{$this->table}:{$column}";
-        
+
         $service = app(BloomFilterService::class);
 
         // Check if it might exist in the bloom filter
         if ($service->exists($bloomKey, (string) $value)) {
             // It might exist, so we must check the database to be sure
             $query = DB::table($this->table)->where($column, $value);
-            
+
             if ($this->ignoreId !== null) {
                 $query->where($this->idColumn, '!=', $this->ignoreId);
             }

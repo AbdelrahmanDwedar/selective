@@ -2,9 +2,9 @@
 
 namespace AbdelrahmanDwedar\Selective\Commands;
 
+use AbdelrahmanDwedar\Selective\BloomFilterService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Redis;
-use AbdelrahmanDwedar\Selective\BloomFilterService;
 
 class BloomStatusCommand extends Command
 {
@@ -32,10 +32,12 @@ class BloomStatusCommand extends Command
 
         if ($table && $column) {
             $this->showSingleFilterInfo($service, "{$table}:{$column}");
+
             return 0;
         }
 
         $this->showAllFiltersInfo($service);
+
         return 0;
     }
 
@@ -48,11 +50,12 @@ class BloomStatusCommand extends Command
 
         if (empty($info)) {
             $this->error("Bloom filter for '{$key}' does not exist.");
+
             return;
         }
 
         $this->info("Bloom filter info for: {$key}");
-        
+
         $table = [];
         foreach ($info as $k => $v) {
             $table[] = [$k, $v];
@@ -68,16 +71,17 @@ class BloomStatusCommand extends Command
     {
         // To get all filters, we need to scan Redis for keys matching the prefix
         $prefix = config('selective.key_prefix', 'selective:');
-        
+
         // This gets the raw Redis connection which depends on the driver (predis/phpredis)
         $redis = Redis::connection(config('selective.redis_connection', 'default'));
-        
-        // Note: KEYS is generally not recommended in production for large datasets, 
+
+        // Note: KEYS is generally not recommended in production for large datasets,
         // but it's acceptable for a status command.
-        $keys = $redis->executeRaw(['KEYS', $prefix . '*']);
+        $keys = $redis->executeRaw(['KEYS', $prefix.'*']);
 
         if (empty($keys)) {
             $this->info("No bloom filters found with prefix '{$prefix}'.");
+
             return;
         }
 
@@ -86,7 +90,7 @@ class BloomStatusCommand extends Command
             // Strip the prefix for the display and info command
             $key = str_replace($prefix, '', $fullKey);
             $info = $service->info($key);
-            
+
             $rows[] = [
                 $fullKey,
                 $info['Capacity'] ?? 'N/A',
@@ -96,7 +100,7 @@ class BloomStatusCommand extends Command
             ];
         }
 
-        $this->info("Found " . count($keys) . " bloom filter(s):");
+        $this->info('Found '.count($keys).' bloom filter(s):');
         $this->table(['Key', 'Capacity', 'Size (Bytes)', 'Items Inserted', 'Expansion Rate'], $rows);
     }
 }

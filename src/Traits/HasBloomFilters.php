@@ -2,9 +2,10 @@
 
 namespace AbdelrahmanDwedar\Selective\Traits;
 
-use Illuminate\Support\Facades\Log;
 use AbdelrahmanDwedar\Selective\BloomFilterService;
 use Exception;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 /**
  * @property array $bloomFilters
@@ -13,8 +14,6 @@ trait HasBloomFilters
 {
     /**
      * Boot the trait.
-     *
-     * @return void
      */
     public static function bootHasBloomFilters(): void
     {
@@ -29,8 +28,8 @@ trait HasBloomFilters
         static::deleted(function ($model) {
             // Bloom filters do not support deletion of individual items.
             // We just log that the item was deleted from DB but remains in the filter.
-            if (property_exists($model, 'bloomFilters') && !empty($model->bloomFilters)) {
-                Log::debug("[Selective] Model deleted. Note that bloom filters do not support item removal. Items will remain in the filter: " . implode(', ', $model->bloomFilters));
+            if (property_exists($model, 'bloomFilters') && ! empty($model->bloomFilters)) {
+                Log::debug('[Selective] Model deleted. Note that bloom filters do not support item removal. Items will remain in the filter: '.implode(', ', $model->bloomFilters));
             }
         });
     }
@@ -38,13 +37,11 @@ trait HasBloomFilters
     /**
      * Sync the model's attributes to the bloom filter.
      *
-     * @param \Illuminate\Database\Eloquent\Model $model
-     * @param string $event
-     * @return void
+     * @param  Model  $model
      */
     protected function syncToBloomFilter($model, string $event): void
     {
-        if (!property_exists($model, 'bloomFilters') || empty($model->bloomFilters)) {
+        if (! property_exists($model, 'bloomFilters') || empty($model->bloomFilters)) {
             return;
         }
 
@@ -56,8 +53,8 @@ trait HasBloomFilters
                 // If creating, add the value. If updating, only add if the value changed.
                 if ($event === 'created' || ($event === 'updating' && $model->isDirty($column))) {
                     $value = $model->getAttribute($column);
-                    
-                    if (!empty($value)) {
+
+                    if (! empty($value)) {
                         $key = "{$table}:{$column}";
                         $service->add($key, (string) $value);
                     }
@@ -65,7 +62,7 @@ trait HasBloomFilters
             }
         } catch (Exception $e) {
             // We don't want a bloom filter failure to stop a database transaction
-            Log::warning("[Selective] Failed to sync model to bloom filter during {$event}: " . $e->getMessage());
+            Log::warning("[Selective] Failed to sync model to bloom filter during {$event}: ".$e->getMessage());
         }
     }
 }

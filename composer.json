@@ -10,7 +10,7 @@
     ],
     "require": {
         "php": "^8.2",
-        "illuminate/support": "^10.0|^11.0|^12.0|^13.0"
+        "illuminate/support": "^10.0|^11.0|^12.0|^13.0",
         "predis/predis": "^3.5"
     },
     "require-dev": {
@@ -18,7 +18,7 @@
         "phpunit/phpunit": "^10.0|^11.0",
         "laravel/pint": "^1.29",
         "pestphp/pest": "^3.8",
-        "pestphp/pest-plugin-laravel": "^3.2",
+        "pestphp/pest-plugin-laravel": "^3.2"
     },
     "autoload": {
         "psr-4": {

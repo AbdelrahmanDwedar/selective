@@ -2,6 +2,9 @@
 
 namespace AbdelrahmanDwedar\Selective;
 
+use AbdelrahmanDwedar\Selective\Commands\BloomClearCommand;
+use AbdelrahmanDwedar\Selective\Commands\BloomSeedCommand;
+use AbdelrahmanDwedar\Selective\Commands\BloomStatusCommand;
 use Illuminate\Support\ServiceProvider;
 
 class SelectiveServiceProvider extends ServiceProvider
@@ -12,7 +15,7 @@ class SelectiveServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(
-            __DIR__ . '/../config/selective.php', 'selective'
+            __DIR__.'/../config/selective.php', 'selective'
         );
 
         $this->app->singleton(BloomFilterService::class, function ($app) {
@@ -27,13 +30,13 @@ class SelectiveServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->publishes([
-                __DIR__ . '/../config/selective.php' => config_path('selective.php'),
+                __DIR__.'/../config/selective.php' => config_path('selective.php'),
             ], 'selective-config');
 
             $this->commands([
-                \AbdelrahmanDwedar\Selective\Commands\BloomSeedCommand::class,
-                \AbdelrahmanDwedar\Selective\Commands\BloomStatusCommand::class,
-                \AbdelrahmanDwedar\Selective\Commands\BloomClearCommand::class,
+                BloomSeedCommand::class,
+                BloomStatusCommand::class,
+                BloomClearCommand::class,
             ]);
         }
     }

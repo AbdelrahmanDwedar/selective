@@ -2,8 +2,9 @@
 
 namespace AbdelrahmanDwedar\Selective\Tests;
 
-use Orchestra\Testbench\TestCase as Orchestra;
 use AbdelrahmanDwedar\Selective\SelectiveServiceProvider;
+use Illuminate\Support\Facades\Redis;
+use Orchestra\Testbench\TestCase as Orchestra;
 
 abstract class TestCase extends Orchestra
 {
@@ -12,7 +13,7 @@ abstract class TestCase extends Orchestra
         parent::setUp();
 
         try {
-            \Illuminate\Support\Facades\Redis::connection()->ping();
+            Redis::connection()->ping();
         } catch (\Exception $e) {
             $this->markTestSkipped('Redis is not running. Please start Redis to run feature tests.');
         }

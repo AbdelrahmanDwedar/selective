@@ -2,10 +2,11 @@
 
 namespace AbdelrahmanDwedar\Selective;
 
-use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Exception;
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Redis\Connections\Connection;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 
 class BloomFilterService
 {
@@ -22,7 +23,7 @@ class BloomFilterService
     /**
      * Get the Redis connection.
      *
-     * @return \Illuminate\Redis\Connections\Connection
+     * @return Connection
      */
     protected function getConnection()
     {
@@ -31,23 +32,16 @@ class BloomFilterService
 
     /**
      * Get the prefixed key.
-     *
-     * @param string $key
-     * @return string
      */
     public function getKey(string $key): string
     {
         $prefix = $this->config->get('selective.key_prefix', 'selective:');
-        return $prefix . $key;
+
+        return $prefix.$key;
     }
 
     /**
      * Reserve a bloom filter.
-     *
-     * @param string $key
-     * @param float|null $errorRate
-     * @param int|null $capacity
-     * @return void
      */
     public function reserve(string $key, ?float $errorRate = null, ?int $capacity = null): void
     {
@@ -56,7 +50,7 @@ class BloomFilterService
                 'BF.RESERVE',
                 $this->getKey($key),
                 $errorRate ?? $this->config->get('selective.default_error_rate', 0.01),
-                $capacity ?? $this->config->get('selective.default_capacity', 1000)
+                $capacity ?? $this->config->get('selective.default_capacity', 1000),
             ]);
         } catch (Exception $e) {
             $this->handleException('Failed to reserve bloom filter', $e);
@@ -66,8 +60,6 @@ class BloomFilterService
     /**
      * Add an item to the bloom filter.
      *
-     * @param string $key
-     * @param string $item
      * @return bool True if the item was newly added, false if it may already exist
      */
     public function add(string $key, string $item): bool
@@ -80,18 +72,20 @@ class BloomFilterService
                     $this->getKey($key),
                     'CAPACITY', $this->config->get('selective.default_capacity', 1000),
                     'ERROR', $this->config->get('selective.default_error_rate', 0.01),
-                    'ITEMS', $item
+                    'ITEMS', $item,
                 ]);
+
                 return (bool) $result[0];
             } else {
                 return (bool) $this->getConnection()->executeRaw([
                     'BF.ADD',
                     $this->getKey($key),
-                    $item
+                    $item,
                 ]);
             }
         } catch (Exception $e) {
             $this->handleException('Failed to add item to bloom filter', $e);
+
             return false;
         }
     }
@@ -99,8 +93,6 @@ class BloomFilterService
     /**
      * Check if an item exists in the bloom filter.
      *
-     * @param string $key
-     * @param string $item
      * @return bool True if it might exist, false if it definitely doesn't
      */
     public function exists(string $key, string $item): bool
@@ -109,10 +101,11 @@ class BloomFilterService
             return (bool) $this->getConnection()->executeRaw([
                 'BF.EXISTS',
                 $this->getKey($key),
-                $item
+                $item,
             ]);
         } catch (Exception $e) {
             $this->handleException('Failed to check existence in bloom filter', $e);
+
             // If fallback is enabled, we return false so the caller falls back to DB check
             return false;
         }
@@ -121,8 +114,6 @@ class BloomFilterService
     /**
      * Add multiple items to the bloom filter.
      *
-     * @param string $key
-     * @param array $items
      * @return array Array of booleans corresponding to each item
      */
     public function addMultiple(string $key, array $items): array
@@ -138,17 +129,20 @@ class BloomFilterService
                     $this->getKey($key),
                     'CAPACITY', $this->config->get('selective.default_capacity', 1000),
                     'ERROR', $this->config->get('selective.default_error_rate', 0.01),
-                    'ITEMS'
+                    'ITEMS',
                 ];
                 $result = $this->getConnection()->executeRaw(array_merge($args, $items));
-                return array_map(fn($r) => (bool) $r, $result);
+
+                return array_map(fn ($r) => (bool) $r, $result);
             } else {
                 $args = ['BF.MADD', $this->getKey($key)];
                 $result = $this->getConnection()->executeRaw(array_merge($args, $items));
-                return array_map(fn($r) => (bool) $r, $result);
+
+                return array_map(fn ($r) => (bool) $r, $result);
             }
         } catch (Exception $e) {
             $this->handleException('Failed to add multiple items to bloom filter', $e);
+
             return array_fill(0, count($items), false);
         }
     }
@@ -156,8 +150,6 @@ class BloomFilterService
     /**
      * Check if multiple items exist in the bloom filter.
      *
-     * @param string $key
-     * @param array $items
      * @return array Array of booleans corresponding to each item
      */
     public function existsMultiple(string $key, array $items): array
@@ -169,9 +161,11 @@ class BloomFilterService
         try {
             $args = ['BF.MEXISTS', $this->getKey($key)];
             $result = $this->getConnection()->executeRaw(array_merge($args, $items));
-            return array_map(fn($r) => (bool) $r, $result);
+
+            return array_map(fn ($r) => (bool) $r, $result);
         } catch (Exception $e) {
             $this->handleException('Failed to check multiple existence in bloom filter', $e);
+
             return array_fill(0, count($items), false);
         }
     }
@@ -179,15 +173,14 @@ class BloomFilterService
     /**
      * Get information about a bloom filter.
      *
-     * @param string $key
      * @return array Associative array of info, or empty array if it doesn't exist
      */
     public function info(string $key): array
     {
         try {
             $result = $this->getConnection()->executeRaw(['BF.INFO', $this->getKey($key)]);
-            
-            if (!is_array($result)) {
+
+            if (! is_array($result)) {
                 return [];
             }
 
@@ -198,18 +191,17 @@ class BloomFilterService
                     $info[$result[$i]] = $result[$i + 1];
                 }
             }
+
             return $info;
         } catch (Exception $e) {
             $this->handleException('Failed to get bloom filter info', $e);
+
             return [];
         }
     }
 
     /**
      * Delete a bloom filter.
-     *
-     * @param string $key
-     * @return bool
      */
     public function delete(string $key): bool
     {
@@ -217,6 +209,7 @@ class BloomFilterService
             return (bool) $this->getConnection()->executeRaw(['DEL', $this->getKey($key)]);
         } catch (Exception $e) {
             $this->handleException('Failed to delete bloom filter', $e);
+
             return false;
         }
     }
@@ -224,15 +217,12 @@ class BloomFilterService
     /**
      * Handle an exception thrown during a Redis operation.
      *
-     * @param string $message
-     * @param Exception $e
-     * @return void
      * @throws Exception
      */
     protected function handleException(string $message, Exception $e): void
     {
         if ($this->config->get('selective.fallback_on_error', true)) {
-            Log::warning("[Selective] {$message}: " . $e->getMessage());
+            Log::warning("[Selective] {$message}: ".$e->getMessage());
         } else {
             throw $e;
         }

@@ -2,8 +2,8 @@
 
 namespace AbdelrahmanDwedar\Selective\Facades;
 
-use Illuminate\Support\Facades\Facade;
 use AbdelrahmanDwedar\Selective\BloomFilterService;
+use Illuminate\Support\Facades\Facade;
 
 /**
  * @method static void reserve(string $key, ?float $errorRate = null, ?int $capacity = null)
@@ -15,14 +15,12 @@ use AbdelrahmanDwedar\Selective\BloomFilterService;
  * @method static bool delete(string $key)
  * @method static string getKey(string $key)
  *
- * @see \AbdelrahmanDwedar\Selective\BloomFilterService
+ * @see BloomFilterService
  */
 class BloomFilter extends Facade
 {
     /**
      * Get the registered name of the component.
-     *
-     * @return string
      */
     protected static function getFacadeAccessor(): string
     {
